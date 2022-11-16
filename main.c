@@ -1,44 +1,49 @@
 #include "shell.h"
-
 /**
- * main - entry point
- * @ac: arg count
- * @av: arg vector
- *
- * Return: 0 on success, 1 on error
+ * main - This is a simple shell created by
+ * for ALX Team Project
+ * Return: 0 if success
  */
-int main(int ac, char **av)
+int main(void)
 {
-	info_t info[] = { INFO_INIT };
-	int fd = 2;
+	ssize_t bytes_rd = 0; /** Bytes read from a getline*/
+	size_t bf_size = 0; /**Buffer size*/
+	char *entry = NULL, *arguments[20]; /**String of args that enters the usr*/
+	int counter = 1, vf_stat = 0, exist_stat = 0, exit_stat = 0, blt_stat = 0;
 
-	asm ("mov %1, %0\n\t"
-		"add $3, %0"
-		: "=r" (fd)
-		: "r" (fd));
-
-	if (ac == 2)
+	_printp("$ ", 2);/**prompt mini-shell*/
+	bytes_rd = getline(&entry, &bf_size, stdin); /**sizeof entry, o -1 (EOF))*/
+	while (bytes_rd != -1)
 	{
-		fd = open(av[1], O_RDONLY);
-		if (fd == -1)
+		if (*entry != '\n')
 		{
-			if (errno == EACCES)
-				exit(126);
-			if (errno == ENOENT)
+			fill_args(entry, arguments);
+			if (arguments[0] != NULL)
 			{
-				_eputs(av[0]);
-				_eputs(": 0: Can't open ");
-				_eputs(av[1]);
-				_eputchar('\n');
-				_eputchar(BUF_FLUSH);
-				exit(127);
+				exist_stat = exist(arguments[0]);/**Exist evaluates if the path entered exists*/
+				if (exist_stat != 0)/**Did not find the file*/
+				{
+					vf_stat = verify_path(arguments);
+					if (vf_stat == 0)
+						exit_stat = exec(arguments), free(entry), free(*arguments);
+					else
+					{
+					blt_stat = verify_blt(arguments, exit_stat);
+					if (blt_stat != 0)
+						exit_stat = print_not_found(arguments, counter), free(entry);
+					}
+				}
+				else /**Found the file*/
+					exit_stat = exec(arguments), free(entry);
 			}
-			return (EXIT_FAILURE);
+			else
+				free(entry);
 		}
-		info->readfd = fd;
+		else if (*entry == '\n')
+			free(entry);
+		entry = NULL, counter++;
+		_printp("$ ", 2), bytes_rd = getline(&entry, &bf_size, stdin);
 	}
-	populate_env_list(info);
-	read_history(info);
-	hsh(info, av);
-	return (EXIT_SUCCESS);
+	last_free(entry);
+	return (exit_stat);
 }
